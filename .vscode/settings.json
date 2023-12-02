@@ -1,0 +1,25 @@
+{
+  "editor.formatOnSave": false,
+  "editor.defaultFormatter": "rmcmk.forge-format-vsc",
+  "wake.compiler.solc.evm_version": "istanbul",
+  "wake.compiler.solc.exclude_paths": [
+    "out",
+    "cache",
+    ".vscode",
+    "lib",
+    "venv",
+    "inputs"
+  ],
+  "wake.compiler.solc.include_paths": [],
+  "wake.compiler.solc.remappings": [
+    "ds-test/=lib/forge-std/lib/ds-test/src/",
+    "forge-std/=lib/forge-std/src/"
+  ],
+  "wake.compiler.solc.target_version": "0.8.19",
+  "wake.compiler.solc.via_IR": false,
+  "wake.compiler.solc.optimizer.enabled": false,
+  "wake.lsp.code_lens.enable": false,
+  "terminal.integrated.env.windows": {
+    "PATH": "${env:PATH}${env:USERPROFILE}\\.foundry\\bin\\"
+  }
+}
