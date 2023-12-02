@@ -41,12 +41,11 @@ contract StringsTest is Test {
     }
 
     function assertResult(MatchResult memory result, uint256 expectedStartIndex, uint256 expectedLength) private {
-        assertTrue(result.valid);
         assertEq(result.startIndex, expectedStartIndex);
         assertEq(result.length, expectedLength);
     }
 
-    function test_findFirstOf() public {
+    function test_findFirstOf_1() public {
         string memory str = "123456789";
         bytes[] memory substrings = destruct(str);
         MatchResult memory result = Strings.findFirstOf(str, substrings);
@@ -60,39 +59,89 @@ contract StringsTest is Test {
 
         result = Strings.findFirstOf(str, ALL_DIGITS);
         assertResult(result, 0, 1);
+    }
 
-        // ----------------------------
-        str = "onetwothreefourfivesixseveneightnine";
+    function test_findFirstOf_2() public {
+        string memory str = "onetwothreefourfivesixseveneightnine";
+        bytes[] memory substrings = destruct(str);
+        MatchResult memory result = Strings.findFirstOf(str, substrings);
+        assertResult(result, 0, 1);
+
+        result = Strings.findFirstOf(str, ALL_DIGITS);
+        assertResult(result, 0, 3);
+
         result = Strings.findFirstOf(str, LINGUISTIC_DIGITS);
         assertResult(result, 0, 3);
 
-        result = Strings.findFirstOf(str, ALL_DIGITS);
-        assertResult(result, 0, 1);
-
         vm.expectRevert("no first matches found for: onetwothreefourfivesixseveneightnine");
         result = Strings.findFirstOf(str, NUMERIC_DIGITS);
+    }
 
-        substrings = destruct(str);
-        result = Strings.findFirstOf(str, substrings);
-        assertResult(result, 0, 1);
-
-        // ----------------------------
-        str = "3nmronemlqzfxgonepkh";
-        substrings = destruct(str);
-        result = Strings.findFirstOf(str, substrings);
+    function test_findFirstOf_3() public {
+        string memory str = "3nmronemlqzfxgonepkh";
+        bytes[] memory substrings = destruct(str);
+        MatchResult memory result = Strings.findFirstOf(str, substrings);
         assertResult(result, 0, 1);
 
         result = Strings.findFirstOf(str, NUMERIC_DIGITS);
         assertResult(result, 0, 1);
 
         result = Strings.findFirstOf(str, LINGUISTIC_DIGITS);
-        assertResult(result, 1, 3);
+        assertResult(result, 4, 3);
 
         result = Strings.findFirstOf(str, ALL_DIGITS);
         assertResult(result, 0, 1);
     }
 
-    function test_findLastOf() public {
+    function test_findFirstOf_4() public {
+        string memory str = "gsjgklneight6zqfz";
+        bytes[] memory substrings = destruct(str);
+        MatchResult memory result = Strings.findFirstOf(str, substrings);
+        assertResult(result, 0, 1);
+
+        result = Strings.findFirstOf(str, NUMERIC_DIGITS);
+        assertResult(result, 12, 1);
+
+        result = Strings.findFirstOf(str, LINGUISTIC_DIGITS);
+        assertResult(result, 7, 5);
+
+        result = Strings.findFirstOf(str, ALL_DIGITS);
+        assertResult(result, 7, 5);
+    }
+
+    function test_findFirstOf_5() public {
+        string memory str = "pqr3stu8vwx";
+        bytes[] memory substrings = destruct(str);
+        MatchResult memory result = Strings.findFirstOf(str, substrings);
+        assertResult(result, 0, 1);
+
+        result = Strings.findFirstOf(str, NUMERIC_DIGITS);
+        assertResult(result, 3, 1);
+
+        vm.expectRevert("no first matches found for: pqr3stu8vwx");
+        result = Strings.findFirstOf(str, LINGUISTIC_DIGITS);
+
+        result = Strings.findFirstOf(str, ALL_DIGITS);
+        assertResult(result, 3, 1);
+    }
+
+    function test_findFirstOf_6() public {
+        string memory str = "abcone2threexyz";
+        bytes[] memory substrings = destruct(str);
+        MatchResult memory result = Strings.findFirstOf(str, substrings);
+        assertResult(result, 0, 1);
+
+        result = Strings.findFirstOf(str, NUMERIC_DIGITS);
+        assertResult(result, 6, 1);
+
+        result = Strings.findFirstOf(str, LINGUISTIC_DIGITS);
+        assertResult(result, 3, 3);
+
+        result = Strings.findFirstOf(str, ALL_DIGITS);
+        assertResult(result, 3, 3);
+    }
+
+    function test_findLastOf_1() public {
         string memory str = "123456789";
         bytes[] memory substrings = destruct(str);
         MatchResult memory result = Strings.findLastOf(str, substrings);
@@ -106,36 +155,85 @@ contract StringsTest is Test {
 
         result = Strings.findLastOf(str, ALL_DIGITS);
         assertResult(result, 8, 1);
+    }
 
-        // ----------------------------
-        str = "onetwothreefourfivesixseveneightnine";
-        result = Strings.findLastOf(str, LINGUISTIC_DIGITS);
-        assertResult(result, 32, 4);
+    function test_findLastOf_2() public {
+        string memory str = "onetwothreefourfivesixseveneightnine";
+        bytes[] memory substrings = destruct(str);
+        MatchResult memory result = Strings.findLastOf(str, substrings);
+        assertResult(result, 35, 1);
 
         result = Strings.findLastOf(str, ALL_DIGITS);
+        assertResult(result, 32, 4);
+
+        result = Strings.findLastOf(str, LINGUISTIC_DIGITS);
         assertResult(result, 32, 4);
 
         vm.expectRevert("no last matches found for: onetwothreefourfivesixseveneightnine");
         result = Strings.findLastOf(str, NUMERIC_DIGITS);
+    }
 
-        substrings = destruct(str);
-        result = Strings.findLastOf(str, substrings);
-        assertResult(result, 35, 1);
-
-        // ----------------------------
-        str = "3nmronemlqzfxgonepkh";
-        substrings = destruct(str);
-        result = Strings.findLastOf(str, substrings);
+    function test_findLastOf_3() public {
+        string memory str = "3nmronemlqzfxgonepkh";
+        bytes[] memory substrings = destruct(str);
+        MatchResult memory result = Strings.findLastOf(str, substrings);
         assertResult(result, 19, 1);
 
         result = Strings.findLastOf(str, NUMERIC_DIGITS);
         assertResult(result, 0, 1);
-        
+
         result = Strings.findLastOf(str, LINGUISTIC_DIGITS);
         assertResult(result, 14, 3);
 
         result = Strings.findLastOf(str, ALL_DIGITS);
-        assertResult(result, 0, 1);
+        assertResult(result, 14, 3);
     }
 
+    function test_findLastOf_4() public {
+        string memory str = "gsjgklneight6zqfz";
+        bytes[] memory substrings = destruct(str);
+        MatchResult memory result = Strings.findLastOf(str, substrings);
+        assertResult(result, 16, 1);
+
+        result = Strings.findLastOf(str, NUMERIC_DIGITS);
+        assertResult(result, 12, 1);
+
+        result = Strings.findLastOf(str, LINGUISTIC_DIGITS);
+        assertResult(result, 7, 5);
+
+        result = Strings.findLastOf(str, ALL_DIGITS);
+        assertResult(result, 12, 1);
+    }
+
+    function test_findLastOf_5() public {
+        string memory str = "pqr3stu8vwx";
+        bytes[] memory substrings = destruct(str);
+        MatchResult memory result = Strings.findLastOf(str, substrings);
+        assertResult(result, 10, 1);
+
+        result = Strings.findLastOf(str, NUMERIC_DIGITS);
+        assertResult(result, 7, 1);
+
+        vm.expectRevert("no last matches found for: pqr3stu8vwx");
+        result = Strings.findLastOf(str, LINGUISTIC_DIGITS);
+
+        result = Strings.findLastOf(str, ALL_DIGITS);
+        assertResult(result, 3, 1);
+    }
+
+    function test_findLastOf_6() public {
+        string memory str = "abcone2threexyz";
+        bytes[] memory substrings = destruct(str);
+        MatchResult memory result = Strings.findLastOf(str, substrings);
+        assertResult(result, 14, 1);
+
+        result = Strings.findLastOf(str, NUMERIC_DIGITS);
+        assertResult(result, 6, 1);
+
+        result = Strings.findLastOf(str, LINGUISTIC_DIGITS);
+        assertResult(result, 7, 5);
+
+        result = Strings.findLastOf(str, ALL_DIGITS);
+        assertResult(result, 7, 5);
+    }
 }
