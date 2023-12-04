@@ -4,45 +4,50 @@ pragma solidity ^0.8.19;
 struct MatchResult {
     uint256 startIndex;
     uint256 length;
-    bool valid;
 }
 
-// this is all horribly inefficient but i dont care, im exhausted, stupid puzzle kicked my ass lmfao
 library Strings {
+    function isMatchValid(MatchResult memory result) internal pure returns (bool) {
+        return result.length > 0;
+    }
+
     function findLastOf(string memory str, bytes[] memory substrings) internal pure returns (MatchResult memory last) {
-        for (uint256 i = substrings.length; i > 0; i--) {
-            bytes memory substringBytes = bytes(substrings[i - 1]);
-            MatchResult memory result = findLast(str, substringBytes);
-            if (result.valid && (result.startIndex >= last.startIndex || !last.valid)) {
+        for (uint256 i = 0; i < substrings.length; i++) {
+            MatchResult memory result = findLast(str, bytes(substrings[i]));
+            if (isMatchValid(result) && result.startIndex >= last.startIndex) {
                 last = result;
             }
         }
 
-        require(last.valid, string.concat("no last matches found for: ", str));
+        require(isMatchValid(last), string.concat("no last matches found for: ", str));
     }
 
     function findLast(string memory str, bytes memory targetBytes) internal pure returns (MatchResult memory last) {
         bytes memory strBytes = bytes(str);
+        uint256 strLength = strBytes.length;
+        uint256 targetLength = targetBytes.length;
 
         // If the string is < target, there is no match
-        if (strBytes.length < targetBytes.length) {
+        if (strLength < targetLength) {
             return last;
         }
 
-        for (uint256 i = 0; i <= strBytes.length - targetBytes.length; i++) {
-            bool isMatch = true;
-            for (uint256 j = 0; j < targetBytes.length; j++) {
-                if (strBytes[i + j] != targetBytes[j]) {
-                    isMatch = false;
+        for (int256 i = int256(strLength - targetLength); i >= 0; i--) {
+            uint256 start = uint256(i);
+            bool found = true;
+            for (uint256 j = 0; j < targetLength; j++) {
+                if (strBytes[start + j] != targetBytes[j]) {
+                    found = false;
                     break;
                 }
             }
 
-            // If we have a match and the current index is >= the first match index OR we don't have a valid match yet, update the first match
-            if (isMatch && (i >= last.startIndex || !last.valid)) {
-                last = MatchResult(i, targetBytes.length, true);
+            if (found) {
+                return MatchResult(start, targetLength);
             }
         }
+
+        return last;
     }
 
     function findFirstOf(string memory str, bytes[] memory substrings)
@@ -51,36 +56,36 @@ library Strings {
         returns (MatchResult memory first)
     {
         for (uint256 i = 0; i < substrings.length; i++) {
-            bytes memory substringBytes = bytes(substrings[i]);
-            MatchResult memory result = findFirst(str, substringBytes);
-            if (result.valid && (result.startIndex <= first.startIndex || !first.valid)) {
+            MatchResult memory result = findFirst(str, bytes(substrings[i]));
+            if (isMatchValid(result) && (result.startIndex <= first.startIndex || !isMatchValid(first))) {
                 first = result;
             }
         }
 
-        require(first.valid, string.concat("no first matches found for: ", str));
+        require(isMatchValid(first), string.concat("no first matches found for: ", str));
     }
 
     function findFirst(string memory str, bytes memory targetBytes) internal pure returns (MatchResult memory first) {
         bytes memory strBytes = bytes(str);
+        uint256 strLength = strBytes.length;
+        uint256 targetLength = targetBytes.length;
 
-        // If the string is < target, there is no match
-        if (strBytes.length < targetBytes.length) {
+        // If the string is shorter than the target, match impossible
+        if (strLength < targetLength) {
             return first;
         }
 
-        for (uint256 i = 0; i <= strBytes.length - targetBytes.length; i++) {
-            bool isMatch = true;
-            for (uint256 j = 0; j < targetBytes.length; j++) {
+        for (uint256 i = 0; i <= strLength - targetLength; i++) {
+            bool found = true;
+            for (uint256 j = 0; j < targetLength; j++) {
                 if (strBytes[i + j] != targetBytes[j]) {
-                    isMatch = false;
+                    found = false;
                     break;
                 }
             }
 
-            // If we have a match and the current index is <= the first match index OR we don't have a valid match yet, update the first match
-            if (isMatch && (i <= first.startIndex || !first.valid)) {
-                first = MatchResult(i, targetBytes.length, true);
+            if (found) {
+                return MatchResult(i, targetLength);
             }
         }
     }
