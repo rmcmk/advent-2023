@@ -2,15 +2,12 @@
 pragma solidity ^0.8.19;
 
 import { BaseAdventTest } from "./BaseAdventTest.sol";
-import { Bytes } from "src/Bytes.sol";
-import { Strings, MatchResult } from "src/Strings.sol";
 import { console2 } from "forge-std/console2.sol";
+import { Source, Sources } from "src/Source.sol";
+import { MatchResult } from "src/MatchResult.sol";
 
 contract Day01Test is BaseAdventTest {
-    using Strings for string;
-    using Bytes for bytes;
-
-    error MissingTranslation(bytes value);
+    using Sources for Source;
 
     bytes[] private LINGUISTIC_DIGITS;
     bytes[] private NUMERIC_DIGITS;
@@ -39,17 +36,14 @@ contract Day01Test is BaseAdventTest {
         ALL_DIGITS.push(digitBytes);
     }
 
-    function translate(bytes memory data) private view returns (bytes memory) {
+    function translate(Source memory source) private view returns (bytes memory translation) {
+        bytes memory data = source.data;
         if (data.length == 1) {
             return data;
         }
 
-        bytes memory translation = LINGUISTIC_TRANSLATION_TABLE[data];
-        if (translation.length > 0) {
-            return translation;
-        }
-
-        revert MissingTranslation(data);
+        translation = LINGUISTIC_TRANSLATION_TABLE[data];
+        require(translation.length > 0, "No translation found");
     }
 
     function test_s1() public {
@@ -69,29 +63,20 @@ contract Day01Test is BaseAdventTest {
     }
 
     function parseCalibrationValues(string memory file, bytes[] memory digits) internal returns (uint256 sum) {
-        string[] memory lines = readLines(file);
+        Source[] memory lines = readLines(file);
         for (uint256 i = 0; i < lines.length; i++) {
             sum += parseCalibrationValue(lines[i], digits);
         }
         console2.log(string(abi.encodePacked("[", file, "]: Calibration Value: ", vm.toString(sum))));
     }
 
-    function parseCalibrationValue(string memory str, bytes[] memory digits) private view returns (uint256) {
-        MatchResult memory firstMatch = str.findFirstOf(digits);
-        MatchResult memory secondMatch = str.findLastOf(digits);
-
-        bytes memory strBytes = bytes(str);
-        uint256 firstIndex = firstMatch.startIndex;
-        uint256 secondIndex = secondMatch.startIndex;
-
-        bytes memory first = translate(strBytes.extractBytes(firstIndex, firstIndex + firstMatch.length));
-        bytes memory second = translate(strBytes.extractBytes(secondIndex, secondIndex + secondMatch.length));
-
-        string memory combined = string(abi.encodePacked(first, second));
-        return vm.parseUint(combined);
+    function parseCalibrationValue(Source memory source, bytes[] memory digits) private view returns (uint256) {
+        MatchResult memory firstMatch = source.findFirstOf(digits);
+        MatchResult memory secondMatch = source.findLastOf(digits);
+        return vm.parseUint(string(abi.encodePacked(translate(firstMatch.slice), translate(secondMatch.slice))));
     }
 
-    function day() internal pure override returns (uint256) {
+    function day() internal pure override returns (uint8) {
         return 1;
     }
 }
