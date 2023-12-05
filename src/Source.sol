@@ -43,62 +43,53 @@ library Sources {
         return from(data);
     }
 
-    /// @notice Converts the specified `source` to `bytes` without modifying the cursor.
-    function toBytes(Source memory source) internal pure returns (bytes memory result) {
-        bytes memory data = source.data;
-        uint256 length = data.length;
-        if (length == 0) {
-            return EMPTY;
-        }
-
-        uint256 cursor = source.cursor;
-        if (cursor == 0) {
-            return data;
-        }
-
-        require(cursor < length, "Cursor out of bounds");
-
-        result = new bytes(length);
-        for (uint256 i = 0; i < length; i++) {
-            result[i] = data[cursor + i];
-        }
-    }
-
     function readByte(Source memory source) internal pure returns (bytes1) {
         return readBytes(source, 1)[0];
     }
 
     /// @notice Reads the `amount` of bytes from the specified `source` and advances the cursor.
     function readBytes(Source memory source, uint256 amount) internal pure returns (bytes memory result) {
+        result = peekBytes(source, amount);
+        source.cursor += amount;
+    }
+
+    function peekBytes(Source memory source, uint256 amount) internal pure returns (bytes memory result) {
         require(source.readableBytes() >= amount, "Not enough bytes to read");
         result = new bytes(amount);
         for (uint256 i = 0; i < amount; i++) {
             result[i] = source.data[source.cursor + i];
         }
-        source.cursor += amount;
     }
 
     function readLines(Source memory source) internal pure returns (Source[] memory lines) {
         uint256 n = source.countLines();
         lines = new Source[](n);
         for (uint256 i = 0; i < n; i++) {
-            // Calculate the chunk size, which is either the remaining bytes or the bytes until the next newline offset from the cursor
-            uint256 chunkSize = source.readableBytes();
-            int256 nextNewline = source.indexOf(NEWLINE);
-            if (nextNewline >= 0) {
-                chunkSize = uint256(nextNewline) - source.cursor;
-            }
-            lines[i] = from(source.readBytes(chunkSize));
-            source.cursor += 1; // Skip the newline
+            lines[i] = readUntil(source, NEWLINE);
+            source.cursor += 1; // Advance the cursor by 1 to skip the newline
         }
     }
 
+    function readUntil(Source memory source, bytes1 target) internal pure returns (Source memory line) {
+        // Calculate the chunk size, which is either the remaining bytes or the bytes until the next `target` offset from the cursor
+        uint256 chunkSize = source.readableBytes();
+        int256 nextNewline = source.indexOf(target);
+        if (nextNewline >= 0) {
+            chunkSize = uint256(nextNewline) - source.cursor;
+        }
+        return from(source.readBytes(chunkSize));
+    }
+
     function toString(Source memory source) internal pure returns (string memory) {
-        return string(toBytes(source));
+        return string(source.peekBytes(source.readableBytes()));
     }
 
     function isReadable(Source memory source) internal pure returns (bool) {
         return source.cursor < source.data.length;
+    }
+
+    function isReadable(Source memory source, uint256 amount) internal pure returns (bool) {
+        return source.cursor + amount <= source.data.length;
     }
 
     function isEmpty(Source memory source) internal pure returns (bool) {
@@ -120,7 +111,7 @@ library Sources {
     /// === Read ===
 
     function countOccurrences(Source memory source, bytes1 target) internal pure returns (uint256 n) {
-        for (uint256 i = 0; i < source.data.length; i++) {
+        for (uint256 i = source.cursor; i < source.data.length; i++) {
             if (source.data[i] == target) {
                 n++;
             }
