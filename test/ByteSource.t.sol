@@ -7,8 +7,8 @@ import { MatchResult, MatchResults } from "src/MatchResult.sol";
 import { VmSafe } from "forge-std/Vm.sol";
 import { console2 } from "forge-std/console2.sol";
 
-/// @title SourceTest - Super simple test to ensure that the library works as expected before we use it in the puzzle
-contract SourceTest is Test {
+/// @title ByteSourceTest - Super simple test to ensure that the library works as expected before we use it in the puzzle
+contract ByteSourceTest is Test {
     using ByteSources for ByteSource;
 
     bytes[] private ALL_DIGITS;

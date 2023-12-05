@@ -24,6 +24,8 @@ contract Day03Test is BaseAdventTest {
     using ByteSources for ByteSource;
     using Bytes for bytes1;
 
+    uint256 constant MAXIMUM_ADJACENT_PART_NUMBERS = 2;
+
     bytes1 constant DEFAULT_VALUE = bytes1(0);
     bytes1 constant GEAR_SYMBOL = bytes1("*");
     ByteSource VALID_SYMBOLS = ByteSources.fromString("*#&@$+-%/=");
@@ -65,40 +67,39 @@ contract Day03Test is BaseAdventTest {
         }
     }
 
-    // Returns `true` if the specified `number` is adjacent to any symbol
+    function isAdjacentTo(uint256 x1, uint256 y1, uint256 x2, uint256 y2, uint256 offsetX)
+        private
+        pure
+        returns (bool)
+    {
+        return isAdjacentTo(x1, y1, x2, y2) || isAdjacentTo(x1, y1, x2 + offsetX - 1, y2);
+    }
+
     function isAdjacentToAnySymbol(Number memory number) private view returns (bool) {
         for (uint256 i = 0; i < symbols.length; i++) {
             Symbol memory symbol = symbols[i];
-            for (uint256 x = 0; x < number.offsetX; x++) {
-                if (isAdjacentTo(symbol.x, symbol.y, number.x + x, number.y)) {
-                    return true; // Return right away if we find a match, do not waste further gas
-                }
+            if (isAdjacentTo(symbol.x, symbol.y, number.x, number.y, number.offsetX)) {
+                return true; // Return right away if we find a match, do not waste further gas
             }
         }
         return false;
     }
 
-    function getAdjacentNumbers(Symbol memory symbol) private view returns (Number[] memory) {
-        Number[] memory adjacentNumbers = new Number[](8);
-        uint256 adjacentCount = 0;
+    function findGearRatio(Symbol memory symbol) private view returns (uint256 gearRatio) {
+        uint8 adjacentCount = 0;
+        uint256[MAXIMUM_ADJACENT_PART_NUMBERS] memory partNumbers;
 
-        for (uint256 i = 0; i < numbers.length; i++) {
+        for (uint256 i = 0; i < numbers.length && adjacentCount < MAXIMUM_ADJACENT_PART_NUMBERS; i++) {
             Number memory number = numbers[i];
+            if (isAdjacentTo(symbol.x, symbol.y, number.x, number.y, number.offsetX)) {
+                partNumbers[adjacentCount++] = number.partNumber;
 
-            for (uint256 x = 0; x < number.offsetX; x++) {
-                if (isAdjacentTo(symbol.x, symbol.y, number.x + x, number.y)) {
-                    adjacentNumbers[adjacentCount++] = number;
-                    break; // Break out of the loop so we don't add the same number multiple times
+                if (adjacentCount == MAXIMUM_ADJACENT_PART_NUMBERS) {
+                    gearRatio = partNumbers[0] * partNumbers[1];
+                    return gearRatio;
                 }
             }
         }
-
-        // Trim the array to the number of adjacent numbers we found
-        assembly {
-            mstore(adjacentNumbers, adjacentCount)
-        }
-
-        return adjacentNumbers;
     }
 
     function parsePoint(uint256 x, uint256 y, bytes1 value) private returns (uint256 offsetX) {
@@ -142,13 +143,7 @@ contract Day03Test is BaseAdventTest {
             if (symbol.value != GEAR_SYMBOL) {
                 continue;
             }
-
-            Number[] memory adjacentNumbers = getAdjacentNumbers(symbol);
-            if (adjacentNumbers.length != 2) {
-                continue;
-            }
-
-            sum += adjacentNumbers[0].partNumber * adjacentNumbers[1].partNumber;
+            sum += findGearRatio(symbol);
         }
     }
 
