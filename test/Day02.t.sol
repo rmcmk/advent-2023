@@ -124,10 +124,10 @@ contract Day02Test is BaseAdventTest {
             line.cursor += bytes("Game ").length; // Skip `Game `, useless data, we don't need it
 
             // Read all the bytes until `:` and convert it to a uint8
-            uint8 id = uint8(vm.parseUint(line.readUntil(":").toString())); // We index the games by 0, subtract 1 to get the correct index
+            uint8 id = uint8(vm.parseUint(line.readUntil(":").toString()));
             line.cursor += 2; // Skip the `: `
 
-            // Read until the next ; or the remwaining bytes if `;` cannot be found
+            // Read until the next ; or the remaining bytes if `;` cannot be found
             Source memory peeksSource = line.readUntil(";");
 
             // Initialize a game for this line
