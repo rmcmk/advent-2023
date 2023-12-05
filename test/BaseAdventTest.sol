@@ -4,12 +4,12 @@ pragma solidity ^0.8.19;
 import { Test } from "forge-std/Test.sol";
 import { VmSafe } from "forge-std/Vm.sol";
 import { console2 } from "forge-std/console2.sol";
-import { Sources, Source } from "src/Source.sol";
+import { ByteSources, ByteSource } from "src/ByteSource.sol";
 
 /// @title BaseAdventTest - Base contract for Advent of Code challenges
 /// @dev This contract provides helpers and utilities for the Advent of Code challenges.
 abstract contract BaseAdventTest is Test {
-    using Sources for Source;
+    using ByteSources for ByteSource;
 
     string private constant ROOT_INPUTS = "./inputs/";
 
@@ -25,7 +25,7 @@ abstract contract BaseAdventTest is Test {
     /// @dev The path should be relative to the project's root directory.
     /// @param file The name of the file input.
     /// @return lines The contents of the file as a string array.
-    function readLines(string memory file) public returns (Source[] memory lines) {
+    function readLines(string memory file) public returns (ByteSource[] memory lines) {
         string memory path = string.concat(ROOT_INPUTS, vm.toString(day()), "/", file);
         require(vm.exists(path), "file does not exist");
 
@@ -33,7 +33,7 @@ abstract contract BaseAdventTest is Test {
         require(!metadata.isDir, "file cannot be a directory");
         require(metadata.length > 0, "file cannot be empty");
 
-        Source memory source = Sources.fromString(vm.readFile(path));
+        ByteSource memory source = ByteSources.fromString(vm.readFile(path));
         lines = source.readLines();
     }
 }

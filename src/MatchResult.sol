@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import { Source } from "./Source.sol";
+import { ByteSource } from "./ByteSource.sol";
 
 struct MatchResult {
-    Source slice;
+    ByteSource slice;
     uint256 startIndex;
     uint256 length;
 }

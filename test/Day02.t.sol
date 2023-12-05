@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 import { BaseAdventTest } from "./BaseAdventTest.sol";
 import { console2 } from "forge-std/console2.sol";
-import { Source, Sources } from "src/Source.sol";
+import { ByteSource, ByteSources } from "src/ByteSource.sol";
 import { MatchResult, MatchResults } from "src/MatchResult.sol";
 import { Strings } from "src/Strings.sol";
 
@@ -20,7 +20,7 @@ struct Peek {
 
 contract Day02Test is BaseAdventTest {
     using MatchResults for MatchResult;
-    using Sources for Source;
+    using ByteSources for ByteSource;
     using Strings for string;
 
     uint8 constant P1_RED = 12;
@@ -117,10 +117,10 @@ contract Day02Test is BaseAdventTest {
     /// Game 3: 8 green, 6 blue, 20 red; 5 blue, 4 red, 13 green; 5 green, 1 red
     /// Game 4: 1 green, 3 red, 6 blue; 3 green, 6 red; 3 green, 15 blue, 14 red
     /// Game 5: 6 red, 1 blue, 3 green; 2 blue, 1 red, 2 green
-    function parseGames(Source[] memory lines) internal {
+    function parseGames(ByteSource[] memory lines) internal {
         totalGames = lines.length;
         for (uint256 i = 0; i < lines.length; i++) {
-            Source memory line = lines[i];
+            ByteSource memory line = lines[i];
             line.cursor += bytes("Game ").length; // Skip `Game `, useless data, we don't need it
 
             // Read all the bytes until `:` and convert it to a uint8
@@ -128,7 +128,7 @@ contract Day02Test is BaseAdventTest {
             line.cursor += 2; // Skip the `: `
 
             // Read until the next ; or the remaining bytes if `;` cannot be found
-            Source memory peeksSource = line.readUntil(";");
+            ByteSource memory peeksSource = line.readUntil(";");
 
             // Initialize a game for this line
             Game storage game = games[id];
@@ -137,11 +137,11 @@ contract Day02Test is BaseAdventTest {
             Peek memory peek = Peek(0, 0, 0);
 
             while (true) {
-                Source memory _count = peeksSource.readUntil(" ");
+                ByteSource memory _count = peeksSource.readUntil(" ");
                 uint8 count = uint8(vm.parseUint(_count.toString()));
                 peeksSource.cursor++; // Skip the " " after "{count}"
 
-                Source memory _color = peeksSource.readUntil(",");
+                ByteSource memory _color = peeksSource.readUntil(",");
                 peeksSource.cursor += 2; // Skip the ", " after "{color}"
 
                 string memory color = _color.toString();

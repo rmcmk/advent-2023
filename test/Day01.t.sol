@@ -3,11 +3,11 @@ pragma solidity ^0.8.19;
 
 import { BaseAdventTest } from "./BaseAdventTest.sol";
 import { console2 } from "forge-std/console2.sol";
-import { Source, Sources } from "src/Source.sol";
+import { ByteSource, ByteSources } from "src/ByteSource.sol";
 import { MatchResult } from "src/MatchResult.sol";
 
 contract Day01Test is BaseAdventTest {
-    using Sources for Source;
+    using ByteSources for ByteSource;
 
     bytes[] private LINGUISTIC_DIGITS;
     bytes[] private NUMERIC_DIGITS;
@@ -36,7 +36,7 @@ contract Day01Test is BaseAdventTest {
         ALL_DIGITS.push(digitBytes);
     }
 
-    function translate(Source memory source) private view returns (bytes memory translation) {
+    function translate(ByteSource memory source) private view returns (bytes memory translation) {
         bytes memory data = source.data;
         if (data.length == 1) {
             return data;
@@ -63,14 +63,14 @@ contract Day01Test is BaseAdventTest {
     }
 
     function parseCalibrationValues(string memory file, bytes[] memory digits) internal returns (uint256 sum) {
-        Source[] memory lines = readLines(file);
+        ByteSource[] memory lines = readLines(file);
         for (uint256 i = 0; i < lines.length; i++) {
             sum += parseCalibrationValue(lines[i], digits);
         }
         console2.log(string(abi.encodePacked("[", file, "]: Calibration Value: ", vm.toString(sum))));
     }
 
-    function parseCalibrationValue(Source memory source, bytes[] memory digits) private view returns (uint256) {
+    function parseCalibrationValue(ByteSource memory source, bytes[] memory digits) private view returns (uint256) {
         MatchResult memory firstMatch = source.findFirstOf(digits);
         MatchResult memory secondMatch = source.findLastOf(digits);
         return vm.parseUint(string(abi.encodePacked(translate(firstMatch.slice), translate(secondMatch.slice))));
