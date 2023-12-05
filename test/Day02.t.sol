@@ -57,7 +57,7 @@ contract Day02Test is BaseAdventTest {
 
     function test_p2() public {
         parseGames(readLines(PART2));
-        assertEq(72227, findPower());
+        assertEq(72_227, findPower());
     }
 
     function day() internal pure override returns (uint8) {

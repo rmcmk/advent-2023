@@ -20,12 +20,7 @@ abstract contract BaseAdventTest is Test {
 
     function day() internal view virtual returns (uint8);
 
-    /// @notice Read lines from a file in the filesystem.
-    /// @dev This function reads a file from the filesystem and returns its contents as a string array.
-    /// @dev The path should be relative to the project's root directory.
-    /// @param file The name of the file input.
-    /// @return lines The contents of the file as a string array.
-    function readLines(string memory file) public returns (ByteSource[] memory lines) {
+    function read(string memory file) private returns (ByteSource memory) {
         string memory path = string.concat(ROOT_INPUTS, vm.toString(day()), "/", file);
         require(vm.exists(path), "file does not exist");
 
@@ -33,7 +28,14 @@ abstract contract BaseAdventTest is Test {
         require(!metadata.isDir, "file cannot be a directory");
         require(metadata.length > 0, "file cannot be empty");
 
-        ByteSource memory source = ByteSources.fromString(vm.readFile(path));
-        lines = source.readLines();
+        return ByteSources.fromString(vm.readFile(path));
+    }
+
+    function readLines(string memory file) public returns (ByteSource[] memory lines) {
+        return read(file).toLines();
+    }
+
+    function readBytes1Matrix(string memory file) public returns (bytes1[][] memory matrix) {
+        return read(file).toBytes1Matrix();
     }
 }

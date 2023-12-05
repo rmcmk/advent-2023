@@ -74,7 +74,7 @@ contract SourceTest is Test {
         assertTrue(metadata.length > 0);
 
         ByteSource memory source = ByteSources.fromString(vm.readFile(path));
-        ByteSource[] memory lines = source.readLines();
+        ByteSource[] memory lines = source.toLines();
 
         assertEq(lines.length, 4);
         assertEq(lines[0].data, "1abc2");
