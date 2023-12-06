@@ -3,11 +3,10 @@ pragma solidity ^0.8.19;
 
 import { BaseAdventTest } from "./BaseAdventTest.sol";
 import { console2 } from "forge-std/console2.sol";
-import { ByteSource, ByteSources } from "src/ByteSource.sol";
-import { MatchResult } from "src/MatchResult.sol";
+import { Slice, ByteBuffer, ByteSequence, AccessMode, ExpansionMode } from "src/ByteBuffer.sol";
 
 contract Day01Test is BaseAdventTest {
-    using ByteSources for ByteSource;
+    using ByteSequence for ByteBuffer;
 
     bytes[] private LINGUISTIC_DIGITS;
     bytes[] private NUMERIC_DIGITS;
@@ -26,30 +25,25 @@ contract Day01Test is BaseAdventTest {
         ALL_DIGITS.push(digitBytes);
     }
 
-    function translate(ByteSource memory source) private view returns (bytes1 translation) {
-        bytes memory data = source.data;
-        if (data.length == 1) {
-            return data[0];
+    function translate(ByteBuffer memory buffer) private view returns (bytes1 translation) {
+        if (buffer.getLength() == 1) {
+            return buffer.peekFirst();
         }
 
-        translation = LINGUISTIC_TRANSLATION_TABLE[data];
+        translation = LINGUISTIC_TRANSLATION_TABLE[buffer.toBytes()];
         require(translation.length > 0, "No translation found");
     }
 
-    function parseCalibrationValue(ByteSource memory source, bytes[] memory digits) private view returns (uint256) {
-        MatchResult memory firstDigit = source.findFirstOf(digits);
-        MatchResult memory lastDigit = source.findLastOf(digits);
-        ByteSource memory translated = ByteSources.empty();
-        translated.writeByte(translate(firstDigit.slice));
-        translated.writeByte(translate(lastDigit.slice));
+    function parseCalibrationValue(ByteBuffer memory buffer, bytes[] memory digits) private view returns (uint256) {
+        Slice memory firstDigit = buffer.findFirstOf(digits);
+        Slice memory lastDigit = buffer.findLastOf(digits);
 
-        // TODO: We don't have read/write cursors yet, so we need to reset the cursor to 0 before reading
-        translated.cursor = 0;
-        return translated.parseUint();
+        return ByteSequence.fromBytes(abi.encodePacked(translate(firstDigit.content), translate(lastDigit.content)))
+            .toUint256();
     }
 
     function sumCalibrationValues(string memory file, bytes[] memory digits) private returns (uint256 sum) {
-        ByteSource[] memory lines = readLines(file);
+        ByteBuffer[] memory lines = readLines(file);
         for (uint256 i = 0; i < lines.length; i++) {
             sum += parseCalibrationValue(lines[i], digits);
         }

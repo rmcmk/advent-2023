@@ -2,10 +2,8 @@
 pragma solidity ^0.8.19;
 
 import { BaseAdventTest } from "./BaseAdventTest.sol";
-import { ByteSource, ByteSources } from "src/ByteSource.sol";
 import { Bytes } from "src/Bytes.sol";
-import { console2 } from "forge-std/console2.sol";
-import { Vm } from "forge-std/Vm.sol";
+import { Slice, ByteBuffer, ByteSequence, AccessMode, ExpansionMode } from "src/ByteBuffer.sol";
 
 struct Symbol {
     uint256 x;
@@ -21,14 +19,14 @@ struct Number {
 }
 
 contract Day03Test is BaseAdventTest {
-    using ByteSources for ByteSource;
+    using ByteSequence for ByteBuffer;
     using Bytes for bytes1;
 
     uint256 constant MAXIMUM_ADJACENT_PART_NUMBERS = 2;
 
     bytes1 constant DEFAULT_VALUE = bytes1(0);
     bytes1 constant GEAR_SYMBOL = bytes1("*");
-    ByteSource VALID_SYMBOLS = ByteSources.fromString("*#&@$+-%/=");
+    ByteBuffer VALID_SYMBOLS = ByteSequence.fromString("*#&@$+-%/=");
 
     bytes1[][] matrix;
     Number[] numbers;
@@ -110,22 +108,18 @@ contract Day03Test is BaseAdventTest {
 
         // If this value is a digit, we need to figure out how many digits it is and parse it
         if (value.isDigit()) {
-            ByteSource memory digits = ByteSources.empty();
+            ByteBuffer memory digits = ByteSequence.alloc(3, AccessMode.RW);
 
             while (value.isDigit()) {
                 digits.writeByte(value);
 
-                // Use the byte length of `digits` as our x offset so we can continue parsing the number if it's more than one digit
-                offsetX = digits.getLength();
+                // Increment our offset and get the next value. If it's not a digit, we'll break out of the loop
+                offsetX += 1;
                 value = getOrDefault(x + offsetX, y);
             }
 
-            // TODO: We don't have read/write cursors yet, so we need to reset the cursor to 0 before reading
-            digits.cursor = 0;
-
             // Parse the amount of positions we stepped and our number
-            uint256 number = digits.parseUint();
-            numbers.push(Number(x, y, offsetX, number));
+            numbers.push(Number(x, y, offsetX, digits.toUint256()));
         }
     }
 
@@ -148,22 +142,22 @@ contract Day03Test is BaseAdventTest {
     }
 
     function test_s1() public {
-        init(readBytes1Matrix(SAMPLE1));
+        init(read2DBytes1Matrix(SAMPLE1));
         assertEq(4361, sumPartNumbers());
     }
 
     function test_p1() public {
-        init(readBytes1Matrix(PART1));
+        init(read2DBytes1Matrix(PART1));
         assertEq(528_819, sumPartNumbers());
     }
 
     function test_s2() public {
-        init(readBytes1Matrix(SAMPLE2));
+        init(read2DBytes1Matrix(SAMPLE2));
         assertEq(467_835, sumGearRatios());
     }
 
     function test_p2() public {
-        init(readBytes1Matrix(PART2));
+        init(read2DBytes1Matrix(PART2));
         assertEq(80_403_602, sumGearRatios());
     }
 
