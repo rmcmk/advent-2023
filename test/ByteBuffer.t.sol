@@ -49,7 +49,7 @@ contract ByteBufferTest is Test {
         assertEq(buffer.writeIndex, 0, "writeIndex");
         assertEq(buffer.getLength(), 11, "getLength");
         assertEq(buffer.readableBytes(), 11, "readableBytes");
-        assertEq(buffer.toString(), "Hello World", "toString");
+        assertEq(buffer.takeString(), "Hello World", "toString");
         assertTrue(buffer.hasReadMode(), "hasReadMode");
         assertFalse(buffer.hasWriteMode(), "hasWriteMode");
         assertTrue(buffer.isReadable(), "isReadable");
@@ -113,133 +113,133 @@ contract ByteBufferTest is Test {
         ByteBuffer memory buffer = ByteSequence.fromString("Game 1: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green");
 
         buffer.skipReader(5); // Skip `Game `
-        assertEq(buffer.toString(), "1: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green");
+        assertEq(buffer.takeString(), "1: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green");
 
-        uint8 id = buffer.readByte().toUint8();
+        uint8 id = buffer.readByte().takeUint8();
         assertEq(id, 1);
 
         buffer.skipReader(2); // Skip `: `
-        assertEq(buffer.toString(), "3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green");
+        assertEq(buffer.takeString(), "3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green");
 
         ByteBuffer[] memory splits = buffer.split(";");
         assertEq(splits.length, 3);
-        assertEq(splits[0].toString(), "3 blue, 4 red");
-        assertEq(splits[1].toString(), " 1 red, 2 green, 6 blue");
-        assertEq(splits[2].toString(), " 2 green");
+        assertEq(splits[0].takeString(), "3 blue, 4 red");
+        assertEq(splits[1].takeString(), " 1 red, 2 green, 6 blue");
+        assertEq(splits[2].takeString(), " 2 green");
 
         ByteBuffer[] memory peeks = splits[0].split(",");
         assertEq(peeks.length, 2);
-        assertEq(peeks[0].toString(), "3 blue");
-        assertEq(peeks[1].toString(), " 4 red");
+        assertEq(peeks[0].takeString(), "3 blue");
+        assertEq(peeks[1].takeString(), " 4 red");
 
         peeks = splits[1].split(",");
         assertEq(peeks.length, 3);
-        assertEq(peeks[0].toString(), " 1 red");
-        assertEq(peeks[1].toString(), " 2 green");
-        assertEq(peeks[2].toString(), " 6 blue");
+        assertEq(peeks[0].takeString(), " 1 red");
+        assertEq(peeks[1].takeString(), " 2 green");
+        assertEq(peeks[2].takeString(), " 6 blue");
 
         peeks = splits[2].split(",");
         assertEq(peeks.length, 1);
-        assertEq(peeks[0].toString(), " 2 green");
+        assertEq(peeks[0].takeString(), " 2 green");
     }
 
     function test_split_4() public {
         ByteBuffer memory buffer = ByteSequence.fromString("Game 1: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green");
 
         buffer.skipReader(5); // Skip `Game `
-        assertEq(buffer.toString(), "1: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green");
+        assertEq(buffer.takeString(), "1: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green");
 
-        uint8 id = buffer.readByte().toUint8();
+        uint8 id = buffer.readByte().takeUint8();
         assertEq(id, 1);
 
         buffer.skipReader(2); // Skip `: `
-        assertEq(buffer.toString(), "3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green");
+        assertEq(buffer.takeString(), "3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green");
 
         ByteBuffer[] memory splits = buffer.splitAndTrim(";");
         assertEq(splits.length, 3);
-        assertEq(splits[0].toString(), "3 blue, 4 red");
-        assertEq(splits[1].toString(), "1 red, 2 green, 6 blue");
-        assertEq(splits[2].toString(), "2 green");
+        assertEq(splits[0].takeString(), "3 blue, 4 red");
+        assertEq(splits[1].takeString(), "1 red, 2 green, 6 blue");
+        assertEq(splits[2].takeString(), "2 green");
 
         ByteBuffer[] memory peeks = splits[0].splitAndTrim(",");
         assertEq(peeks.length, 2);
-        assertEq(peeks[0].toString(), "3 blue");
-        assertEq(peeks[1].toString(), "4 red");
+        assertEq(peeks[0].takeString(), "3 blue");
+        assertEq(peeks[1].takeString(), "4 red");
 
         peeks = splits[1].splitAndTrim(",");
         assertEq(peeks.length, 3);
-        assertEq(peeks[0].toString(), "1 red");
-        assertEq(peeks[1].toString(), "2 green");
-        assertEq(peeks[2].toString(), "6 blue");
+        assertEq(peeks[0].takeString(), "1 red");
+        assertEq(peeks[1].takeString(), "2 green");
+        assertEq(peeks[2].takeString(), "6 blue");
 
         peeks = splits[2].splitAndTrim(",");
         assertEq(peeks.length, 1);
-        assertEq(peeks[0].toString(), "2 green");
+        assertEq(peeks[0].takeString(), "2 green");
     }
 
     function test_trim_1() public {
         // Test with only whitespace characters
-        assertEq(ByteSequence.fromString(" \t\n\r").trim().toString(), "");
+        assertEq(ByteSequence.fromString(" \t\n\r").trim().takeString(), "");
 
         // Test with empty string
-        assertEq(ByteSequence.fromString("").trim().toString(), "");
+        assertEq(ByteSequence.fromString("").trim().takeString(), "");
 
         // Test with a string that contains only one character
-        assertEq(ByteSequence.fromString("a").trim().toString(), "a");
+        assertEq(ByteSequence.fromString("a").trim().takeString(), "a");
 
         // Test with multiple spaces at the beginning and end
-        assertEq(ByteSequence.fromString("  1 abc 2  ").trim().toString(), "1 abc 2");
+        assertEq(ByteSequence.fromString("  1 abc 2  ").trim().takeString(), "1 abc 2");
 
         // Test with multiple tabs at the beginning and end
-        assertEq(ByteSequence.fromString("\t\t1 abc 2\t\t").trim().toString(), "1 abc 2");
+        assertEq(ByteSequence.fromString("\t\t1 abc 2\t\t").trim().takeString(), "1 abc 2");
 
         // Test with multiple line feeds at the beginning and end
-        assertEq(ByteSequence.fromString("\n\n1 abc 2\n\n").trim().toString(), "1 abc 2");
+        assertEq(ByteSequence.fromString("\n\n1 abc 2\n\n").trim().takeString(), "1 abc 2");
 
         // Test with multiple carriage returns at the beginning and end
-        assertEq(ByteSequence.fromString("\r\r1 abc 2\r\r").trim().toString(), "1 abc 2");
+        assertEq(ByteSequence.fromString("\r\r1 abc 2\r\r").trim().takeString(), "1 abc 2");
 
         // Test with a mix of whitespace characters at the beginning and end
-        assertEq(ByteSequence.fromString(" \t\n\r1 abc 2\r\n\t ").trim().toString(), "1 abc 2");
+        assertEq(ByteSequence.fromString(" \t\n\r1 abc 2\r\n\t ").trim().takeString(), "1 abc 2");
 
         // Test with a single space at the beginning and end
-        assertEq(ByteSequence.fromString(" 1 abc 2 ").trim().toString(), "1 abc 2");
+        assertEq(ByteSequence.fromString(" 1 abc 2 ").trim().takeString(), "1 abc 2");
 
         // Test with a single space at the beginning
-        assertEq(ByteSequence.fromString(" 1 abc 2").trim().toString(), "1 abc 2");
+        assertEq(ByteSequence.fromString(" 1 abc 2").trim().takeString(), "1 abc 2");
 
         // Test with a single space at the end
-        assertEq(ByteSequence.fromString("1 abc 2 ").trim().toString(), "1 abc 2");
+        assertEq(ByteSequence.fromString("1 abc 2 ").trim().takeString(), "1 abc 2");
 
         // Test with an already trimmed string
-        assertEq(ByteSequence.fromString("1 abc 2").trim().toString(), "1 abc 2");
+        assertEq(ByteSequence.fromString("1 abc 2").trim().takeString(), "1 abc 2");
 
         // Test with excessive whitespace characters all around
-        assertEq(ByteSequence.fromString("    1     a    b    c 2    ").trim().toString(), "1     a    b    c 2");
+        assertEq(ByteSequence.fromString("    1     a    b    c 2    ").trim().takeString(), "1     a    b    c 2");
     }
 
     function test_trim_2() public {
-        assertEq(ByteSequence.fromString("\r\n1 abc 2\r\n").trim().toString(), "1 abc 2");
-        assertEq(ByteSequence.fromString("\r\n1 abc 2").trim().toString(), "1 abc 2");
-        assertEq(ByteSequence.fromString("1 abc 2\r\n").trim().toString(), "1 abc 2");
+        assertEq(ByteSequence.fromString("\r\n1 abc 2\r\n").trim().takeString(), "1 abc 2");
+        assertEq(ByteSequence.fromString("\r\n1 abc 2").trim().takeString(), "1 abc 2");
+        assertEq(ByteSequence.fromString("1 abc 2\r\n").trim().takeString(), "1 abc 2");
 
-        assertEq(ByteSequence.fromString("\n\r1 abc 2\n\r").trim().toString(), "1 abc 2");
-        assertEq(ByteSequence.fromString("\n\r1 abc 2").trim().toString(), "1 abc 2");
-        assertEq(ByteSequence.fromString("1 abc 2\n\r").trim().toString(), "1 abc 2");
+        assertEq(ByteSequence.fromString("\n\r1 abc 2\n\r").trim().takeString(), "1 abc 2");
+        assertEq(ByteSequence.fromString("\n\r1 abc 2").trim().takeString(), "1 abc 2");
+        assertEq(ByteSequence.fromString("1 abc 2\n\r").trim().takeString(), "1 abc 2");
 
-        assertEq(ByteSequence.fromString("1 abc\t\t\t\t\t\t 2 ").trim().toString(), "1 abc\t\t\t\t\t\t 2");
+        assertEq(ByteSequence.fromString("1 abc\t\t\t\t\t\t 2 ").trim().takeString(), "1 abc\t\t\t\t\t\t 2");
 
         assertEq(
-            ByteSequence.fromString("\t\n\r    1     a    \n\nb    c 2    \n\n\t\r  \n\r\t").trim().toString(),
+            ByteSequence.fromString("\t\n\r    1     a    \n\nb    c 2    \n\n\t\r  \n\r\t").trim().takeString(),
             "1     a    \n\nb    c 2"
         );
 
-        assertEq(ByteSequence.fromString("\n\n\n\n\n\n1 abc 2 ").trim().toString(), "1 abc 2");
-        assertEq(ByteSequence.fromString("\t\t\t\t\t\t1 abc 2").trim().toString(), "1 abc 2");
-        assertEq(ByteSequence.fromString("\n\n\n\n\n\n1 abc 2\t\t\t\t\t\t").trim().toString(), "1 abc 2");
-        assertEq(ByteSequence.fromString("\t\t\t\t\t\t1 abc 2\n\n\n\n\n\n").trim().toString(), "1 abc 2");
-        assertEq(ByteSequence.fromString("\n\n\n\n\n\n1 abc 2\n\n\n\n\n\n").trim().toString(), "1 abc 2");
-        assertEq(ByteSequence.fromString("\t\t\t\t\t\t1 abc 2\t\t\t\t\t\t").trim().toString(), "1 abc 2");
+        assertEq(ByteSequence.fromString("\n\n\n\n\n\n1 abc 2 ").trim().takeString(), "1 abc 2");
+        assertEq(ByteSequence.fromString("\t\t\t\t\t\t1 abc 2").trim().takeString(), "1 abc 2");
+        assertEq(ByteSequence.fromString("\n\n\n\n\n\n1 abc 2\t\t\t\t\t\t").trim().takeString(), "1 abc 2");
+        assertEq(ByteSequence.fromString("\t\t\t\t\t\t1 abc 2\n\n\n\n\n\n").trim().takeString(), "1 abc 2");
+        assertEq(ByteSequence.fromString("\n\n\n\n\n\n1 abc 2\n\n\n\n\n\n").trim().takeString(), "1 abc 2");
+        assertEq(ByteSequence.fromString("\t\t\t\t\t\t1 abc 2\t\t\t\t\t\t").trim().takeString(), "1 abc 2");
     }
 
     function assertBytes1Eq(bytes1 a, bytes1 b) private {

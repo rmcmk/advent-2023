@@ -164,7 +164,7 @@ library ByteSequence {
         return fromBytes(data, AccessMode.R, expansionMode);
     }
 
-    function fromBytes(bytes memory data, AccessMode accessMode) private pure returns (ByteBuffer memory) {
+    function fromBytes(bytes memory data, AccessMode accessMode) internal pure returns (ByteBuffer memory) {
         return fromBytes(data, accessMode, ExpansionMode.Default);
     }
 
@@ -179,15 +179,19 @@ library ByteSequence {
     // === Universal functions ===
 
     function getLength(ByteBuffer memory buffer) internal pure returns (uint256) {
+        return hasWriteMode(buffer) ? buffer.writeIndex : buffer.data.length;
+    }
+
+    function getCapacity(ByteBuffer memory buffer) internal pure returns (uint256) {
         return buffer.data.length;
     }
 
     function isEmpty(ByteBuffer memory buffer) internal pure returns (bool) {
-        return buffer.data.length == 0;
+        return getLength(buffer) == 0;
     }
 
     function isNotEmpty(ByteBuffer memory buffer) internal pure returns (bool) {
-        return buffer.data.length > 0;
+        return !isEmpty(buffer);
     }
 
     // === Peek functions (does not modify state) ===
@@ -207,42 +211,42 @@ library ByteSequence {
 
     function peekLast(ByteBuffer memory buffer) internal pure returns (bytes1) {
         unchecked {
-            return buffer.data[buffer.data.length - 1];
+            return buffer.data[getLength(buffer) - 1];
         }
     }
 
-    function peekSlice(ByteBuffer memory buffer, uint256 startIndex) internal pure returns (ByteBuffer memory) {
-        return peekSlice(buffer, startIndex, buffer.data.length);
+    function peekSlice(ByteBuffer memory buffer, uint256 start) internal pure returns (ByteBuffer memory) {
+        return peekSlice(buffer, start, getLength(buffer));
     }
 
-    function unsafeSlice(ByteBuffer memory buffer, uint256 startIndex, uint256 endIndex)
+    function unsafeSlice(ByteBuffer memory buffer, uint256 start, uint256 end)
         private
         pure
         returns (ByteBuffer memory)
     {
         unchecked {
-            bytes memory data = new bytes(endIndex - startIndex);
-            for (uint256 i = startIndex; i < endIndex; i++) {
-                data[i - startIndex] = buffer.data[i];
+            bytes memory data = new bytes(end - start);
+            for (uint256 i = start; i < end; i++) {
+                data[i - start] = buffer.data[i];
             }
             return fromBytes(data, buffer.accessMode, buffer.expansionMode);
         }
     }
 
-    function peekSlice(ByteBuffer memory buffer, uint256 startIndex, uint256 endIndex)
+    function peekSlice(ByteBuffer memory buffer, uint256 start, uint256 end)
         internal
         pure
         returns (ByteBuffer memory)
     {
-        assertRangeReadable(buffer, startIndex, endIndex);
-        return unsafeSlice(buffer, startIndex, endIndex);
+        assertRangeReadable(buffer, start, end);
+        return unsafeSlice(buffer, start, end);
     }
 
     // === Default reader functions ===
 
     function readableBytes(ByteBuffer memory buffer) internal pure returns (uint256) {
         unchecked {
-            return hasReadMode(buffer) ? buffer.data.length - buffer.readIndex : 0;
+            return hasReadMode(buffer) ? getLength(buffer) - buffer.readIndex : 0;
         }
     }
 
@@ -252,7 +256,7 @@ library ByteSequence {
 
     function isReadable(ByteBuffer memory buffer, uint256 amount) internal pure returns (bool) {
         unchecked {
-            return hasReadMode(buffer) && buffer.readIndex + amount <= buffer.data.length;
+            return hasReadMode(buffer) && buffer.readIndex + amount <= getLength(buffer);
         }
     }
 
@@ -298,30 +302,53 @@ library ByteSequence {
     }
 
     function readBytes(ByteBuffer memory buffer) internal pure returns (ByteBuffer memory) {
-        return readBytes(buffer, buffer.readIndex, buffer.data.length);
+        uint256 start = buffer.readIndex;
+        unchecked {
+            uint256 end = start + readableBytes(buffer);
+            buffer.readIndex = end;
+            return unsafeSlice(buffer, start, end);
+        }
     }
 
     function readBytes(ByteBuffer memory buffer, uint256 amount) internal pure returns (ByteBuffer memory) {
-        return readBytes(buffer, buffer.readIndex, buffer.readIndex + amount);
+        uint256 start = buffer.readIndex;
+        unchecked {
+            uint256 end = start + amount;
+            uint256 length = end - start;
+            assertRangeReadable(buffer, start, end);
+
+            // Since we have checked the range above, we can set the read index directly, bypassing the `skipReader` checks
+            // Also this is safe to increment here as we are using `unsafeSlice`, the slice can be safely returned later without allocating an extra slot for the buffer
+            buffer.readIndex += length;
+            return unsafeSlice(buffer, start, end);
+        }
     }
 
-    function readBytes(ByteBuffer memory buffer, uint256 startIndex, uint256 endIndex)
-        internal
-        pure
-        returns (ByteBuffer memory to)
-    {
-        assertRangeReadable(buffer, startIndex, endIndex);
-        to = unsafeSlice(buffer, startIndex, endIndex);
-        unchecked {
-            skipReader(buffer, endIndex - startIndex);
-        }
+    function sliceFrom(ByteBuffer memory buffer, uint256 start) internal pure returns (ByteBuffer memory) {
+        return sliceOf(buffer, start, getLength(buffer));
+    }
+
+    function sliceTo(ByteBuffer memory buffer, uint256 end) internal pure returns (ByteBuffer memory) {
+        return sliceOf(buffer, buffer.readIndex, end);
+    }
+
+    function sliceOf(ByteBuffer memory buffer, uint256 start, uint256 end) internal pure returns (ByteBuffer memory) {
+        assertRangeReadable(buffer, start, end);
+        return unsafeSlice(buffer, start, end);
     }
 
     // === Default writer functions ===
 
+    /// @notice Returns the number of bytes that can be written to the buffer.
+    /// @dev This function does not take into account the access mode of the buffer.
+    ///         It is used to determine whether the buffer needs to be reallocated.
+    function unsafeWritableBytes(ByteBuffer memory buffer) private pure returns (uint256) {
+        return getCapacity(buffer) - buffer.writeIndex;
+    }
+
     function writableBytes(ByteBuffer memory buffer) internal pure returns (uint256) {
         unchecked {
-            return hasWriteMode(buffer) ? buffer.data.length - buffer.writeIndex : 0;
+            return hasWriteMode(buffer) ? unsafeWritableBytes(buffer) : 0;
         }
     }
 
@@ -331,7 +358,7 @@ library ByteSequence {
 
     function isWritable(ByteBuffer memory buffer, uint256 amount) internal pure returns (bool) {
         unchecked {
-            return hasWriteMode(buffer) && buffer.writeIndex + amount <= buffer.data.length;
+            return hasWriteMode(buffer) && buffer.writeIndex + amount <= getCapacity(buffer);
         }
     }
 
@@ -360,17 +387,6 @@ library ByteSequence {
         return buffer.accessMode == AccessMode.W || buffer.accessMode == AccessMode.RW;
     }
 
-    function tryRealloc(ByteBuffer memory buffer, uint256 minimumBytes) internal pure {
-        unchecked {
-            if (minimumBytes + buffer.writeIndex >= buffer.data.length || buffer.expansionMode == ExpansionMode.None) {
-                return;
-            }
-
-            uint256 newLength = buffer.expansionMode == ExpansionMode.Default ? buffer.data.length * 2 : minimumBytes;
-            buffer.data = abi.encodePacked(buffer.data, new bytes(newLength));
-        }
-    }
-
     // === Write functions ===
 
     function writeByte(ByteBuffer memory self, bytes1 value) internal pure {
@@ -390,90 +406,96 @@ library ByteSequence {
     }
 
     function writeBytes(ByteBuffer memory self, ByteBuffer memory buffer) internal pure {
-        writeBytes(self, take(buffer));
+        writeBytes(self, takeBytes(buffer));
     }
 
     // === Checks ===
 
     function assertIndexWithinBounds(ByteBuffer memory buffer, uint256 index) private pure {
-        require(index < buffer.data.length, "Index out of bounds");
+        require(index < getCapacity(buffer), "Index out of bounds");
     }
 
-    function assertIndexesWithinBounds(ByteBuffer memory buffer, uint256 startIndex, uint256 endIndex) private pure {
-        require(startIndex < endIndex, "Start index must be less than end index");
-        require(startIndex < buffer.data.length, "Start index out of bounds");
-        require(endIndex <= buffer.data.length, "End index out of bounds");
+    function assertIndexesWithinBounds(ByteBuffer memory buffer, uint256 start, uint256 end) private pure {
+        require(start < end, "Start index must be less than end index");
+
+        uint256 capacity = getCapacity(buffer);
+        require(start < capacity, "Start index exceeds buffer capacity");
+        require(end <= capacity, "End index exceeds buffer capacity");
+
+        uint256 length = end - start;
+        require(length <= capacity, "Length exceeds buffer capacity");
     }
 
     function assertReadableBytes(ByteBuffer memory buffer, uint256 amount) private pure {
         require(isReadable(buffer, amount), "Not enough readable bytes");
     }
 
-    function assertRangeReadable(ByteBuffer memory buffer, uint256 startIndex, uint256 endIndex) private pure {
-        assertStartReadIndex(buffer, startIndex);
-        assertIndexesWithinBounds(buffer, startIndex, endIndex);
+    function assertRangeReadable(ByteBuffer memory buffer, uint256 start, uint256 end) private pure {
+        assertIndexesWithinBounds(buffer, start, end);
         unchecked {
-            assertReadableBytes(buffer, endIndex - startIndex);
+            assertReadableBytes(buffer, end - start);
         }
-    }
-
-    function assertStartReadIndex(ByteBuffer memory buffer, uint256 index) private pure {
-        require(index <= buffer.readIndex, "Index must be less than or equal to read index");
-    }
-
-    function assertStartWriteIndex(ByteBuffer memory buffer, uint256 index) private pure {
-        require(index <= buffer.writeIndex, "Index must be less than or equal to write index");
     }
 
     function assertWritableBytes(ByteBuffer memory buffer, uint256 amount) private pure {
-        tryRealloc(buffer, amount);
-        require(isWritable(buffer, amount), "Not enough writable bytes");
+        tryRealloc(buffer, amount); // tryRealloc takes care of the overflow check
     }
 
-    function assertRangeWritable(ByteBuffer memory buffer, uint256 startIndex, uint256 endIndex) private pure {
-        assertStartWriteIndex(buffer, startIndex);
-        assertIndexesWithinBounds(buffer, startIndex, endIndex);
+    function assertRangeWritable(ByteBuffer memory buffer, uint256 start, uint256 end) private pure {
+        assertIndexesWithinBounds(buffer, start, end);
         unchecked {
-            assertWritableBytes(buffer, endIndex - startIndex);
+            assertWritableBytes(buffer, end - start);
         }
     }
 
-    // === Transformations ===
-    function take(ByteBuffer memory buffer) private pure returns (bytes memory slice) {
-        uint256 start = buffer.readIndex;
-        uint256 writeIndex = buffer.writeIndex;
-        uint256 end = writeIndex == 0 ? buffer.data.length : writeIndex;
+    /// @notice Tries to reallocate the buffer to accommodate a minimum number of additional bytes.
+    /// @dev All state this function goes through:
+    ///     - If the buffer is already writable for the required minimum number of bytes, this function does nothing.
+    ///     - If the buffer is not in write mode, this function will revert.
+    ///     - If the buffer would overflow but the expansion mode is set to `None`, this function will revert.
+    ///     - If the buffer would overflow but the expansion mode is set to `Default`, the buffer will be reallocated to twice its current capacity.
+    ///     - If the buffer would overflow but the expansion mode is set to `Minimum`, the buffer will only allocate an additional number of bytes equal to the required minimum.
+    ///     - This function is used internally by the write functions to ensure that the buffer has enough capacity to accommodate the data being written.
+    /// @param buffer The ByteBuffer to be reallocated.
+    /// @param minimumBytes The minimum number of additional bytes the buffer should be able to accommodate.
+    function tryRealloc(ByteBuffer memory buffer, uint256 minimumBytes) private pure {
+        require(hasWriteMode(buffer), "Buffer is not in write mode");
 
-        unchecked {
-            slice = new bytes(end - start);
-            for (uint256 i = start; i < end; i++) {
-                slice[i - start] = buffer.data[i];
-            }
+        // Check if the buffer is already writable for the required minimum number of bytes
+        // We use `unsafeWritableBytes` here as `isWritable()` does more checks that are already
+        //  performed by the `require` statement above
+        if (unsafeWritableBytes(buffer) >= minimumBytes) {
+            return;
         }
-    }
 
-    function toBytes(ByteBuffer memory buffer) internal pure returns (bytes memory) {
-        return take(buffer);
-    }
+        // Ensure that the buffer is in a writable state and has not overflowed
+        require(
+            buffer.expansionMode != ExpansionMode.None,
+            "Buffer is in write mode but has overflown. Expansion mode set to 'None'"
+        );
 
-    function toBytes1(ByteBuffer memory buffer) internal pure returns (bytes1) {
-        return peekFirst(buffer);
+        // Calculate the new length for the buffer based on the expansion mode
+        unchecked {
+            uint256 newLength = buffer.expansionMode == ExpansionMode.Default ? getCapacity(buffer) * 2 : minimumBytes;
+
+            // Perform the reallocation by encoding packed bytes to the buffer data
+            buffer.data = abi.encodePacked(buffer.data, new bytes(newLength));
+        }
     }
 
     function explodeBytes(ByteBuffer memory buffer) internal pure returns (bytes[] memory result) {
-        bytes memory data = buffer.data;
-        result = new bytes[](data.length);
-        for (uint256 i = 0; i < data.length; i++) {
-            result[i] = abi.encodePacked(data[i]);
+        uint256 length = getLength(buffer);
+        result = new bytes[](length);
+        for (uint256 i = 0; i < length; i++) {
+            result[i] = abi.encodePacked(unsafePeekAt(buffer, i));
         }
     }
 
     // === Helpers for dealing with sequences of bytes ===
     function countOccurrences(ByteBuffer memory buffer, bytes1 target) internal pure returns (uint256) {
         uint256 n = 0;
-        bytes memory data = buffer.data;
-        for (uint256 i = buffer.readIndex; i < data.length; i++) {
-            if (data[i] == target) {
+        for (uint256 i = buffer.readIndex; i < getLength(buffer); i++) {
+            if (unsafePeekAt(buffer, i) == target) {
                 unchecked {
                     n++;
                 }
@@ -491,27 +513,31 @@ library ByteSequence {
     }
 
     /// @notice Looks for the first occurrence of the specified `target` from `cursor` and returns its index, or -1 if not found.
-    function indexOf(ByteBuffer memory buffer, bytes1 target) internal pure returns (int256) {
+    function lastIndexOf(ByteBuffer memory buffer, bytes1 target) internal pure returns (int256) {
         bytes memory data = buffer.data;
-        for (uint256 i = buffer.readIndex; i < data.length; i++) {
-            if (data[i] == target) {
+        for (int256 i = int256(buffer.writeIndex - 1); i >= 0; i--) {
+            if (data[uint256(i)] == target) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /// @notice Looks for the first occurrence of the specified `target` from the current reader index and returns its index, or -1 if not found.
+    function indexOf(ByteBuffer memory buffer, bytes1 target) internal pure returns (int256) {
+        for (uint256 i = buffer.readIndex; i < getLength(buffer); i++) {
+            if (unsafePeekAt(buffer, i) == target) {
                 return int256(i);
             }
         }
         return -1;
     }
 
-    /// @notice Looks for the first occurrence of the specified `target` from `cursor` and returns the start index, or -1 if not found.
-    function indexOf(ByteBuffer memory buffer, bytes memory target) internal pure returns (int256) {
-        Slice memory slice = findFirst(buffer, target);
-        if (slice.length > 0) {
-            return int256(slice.relativeStartIndex);
-        }
-        return -1;
-    }
-
-    function contains(ByteBuffer memory buffer, bytes memory target) internal pure returns (bool) {
-        return indexOf(buffer, target) >= 0;
+    /// @notice Looks for the first occurrence of the specified `target` from the current reader index and returns its index, or reverts if not found.
+    function safeIndexOf(ByteBuffer memory buffer, bytes1 target) internal pure returns (uint256) {
+        int256 index = indexOf(buffer, target);
+        require(index >= 0, "Target not found");
+        return uint256(index);
     }
 
     function contains(ByteBuffer memory buffer, bytes1 target) internal pure returns (bool) {
@@ -519,7 +545,7 @@ library ByteSequence {
     }
 
     function findLast(ByteBuffer memory buffer, bytes memory targetBytes) internal pure returns (Slice memory slice) {
-        uint256 srcLength = buffer.data.length;
+        uint256 srcLength = getLength(buffer);
         uint256 targetLength = targetBytes.length;
         int256 readIndex = int256(buffer.readIndex);
 
@@ -549,7 +575,7 @@ library ByteSequence {
     }
 
     function findFirst(ByteBuffer memory buffer, bytes memory targetBytes) internal pure returns (Slice memory slice) {
-        uint256 srcLength = buffer.data.length;
+        uint256 srcLength = getLength(buffer);
         uint256 targetLength = targetBytes.length;
 
         // If the target is longer than the source, it can't possibly be contained within it
@@ -604,9 +630,24 @@ library ByteSequence {
         returns (ByteBuffer[] memory splits)
     {
         ByteBuffer[] memory rawSplits = split(buffer, delimiter);
-        splits = new ByteBuffer[](rawSplits.length);
-        for (uint256 i = 0; i < rawSplits.length; i++) {
-            splits[i] = trim(rawSplits[i]);
+
+        uint256 length = rawSplits.length;
+        uint256 splitsCount = 0;
+        splits = new ByteBuffer[](length);
+
+        for (uint256 i = 0; i < length; i++) {
+            ByteBuffer memory trimmed = trim(rawSplits[i]);
+            if (isNotEmpty(trimmed)) {
+                splits[splitsCount++] = trimmed;
+            }
+        }
+
+        // In the event that the split operation results in empty elements, we need to clamp the size of the array to the number of non-empty elements.
+        // These empty elements can arise particularly after the trimming operation.
+        if (splitsCount != length) {
+            assembly {
+                mstore(splits, splitsCount)
+            }
         }
     }
 
@@ -622,7 +663,7 @@ library ByteSequence {
 
         uint256 index = 0;
         uint256 start = buffer.readIndex;
-        uint256 end = buffer.data.length;
+        uint256 end = getLength(buffer);
 
         for (uint256 i = buffer.readIndex; i < end; i++) {
             if (buffer.data[i] == delimiter) {
@@ -643,7 +684,7 @@ library ByteSequence {
 
     function trim(ByteBuffer memory buffer) internal pure returns (ByteBuffer memory) {
         uint256 start = buffer.readIndex;
-        uint256 end = buffer.data.length;
+        uint256 end = getLength(buffer);
         unchecked {
             while (start < end && Bytes.isWhitespace(buffer.data[start])) {
                 start++;
@@ -674,19 +715,52 @@ library ByteSequence {
         }
     }
 
-    function toString(ByteBuffer memory buffer) internal pure returns (string memory) {
-        return string(toBytes(buffer));
-    }
-
     function toLines(ByteBuffer memory buffer) internal pure returns (ByteBuffer[] memory) {
         return split(buffer, NEWLINE);
     }
 
-    function toUint256(ByteBuffer memory buffer) internal pure returns (uint256) {
-        return vm.parseUint(toString(buffer));
+    /// @dev The "take" functions extract slices from the given ByteBuffer, starting from the current read index
+    ///         up to the end of the write index if the buffer is in write mode, otherwise up to the end of the buffer.
+    ///
+    /// ==============================================================================================================
+    ///     These functions do not modify the state of the buffer; instead, they create new types from the extracted bytes.
+    /// ==============================================================================================================
+    ///
+    ///     Note: These functions do not guarantee the correctness of the underlying data or the extracted types.
+    ///         They are a convenient way to extract bytes from a ByteBuffer and convert them to other types.
+
+    function unsafeTakeBytes(ByteBuffer memory buffer, uint256 start, uint256 end)
+        private
+        pure
+        returns (bytes memory)
+    {
+        unchecked {
+            bytes memory data = new bytes(end - start);
+            for (uint256 i = start; i < end; i++) {
+                data[i - start] = buffer.data[i];
+            }
+            return data;
+        }
     }
 
-    function toUint8(ByteBuffer memory buffer) internal pure returns (uint8) {
-        return uint8(toUint256(buffer));
+    function takeBytes(ByteBuffer memory buffer) internal pure returns (bytes memory) {
+        return unsafeTakeBytes(buffer, buffer.readIndex, getLength(buffer));
+    }
+
+    function takeBytes(ByteBuffer memory buffer, uint256 start, uint256 end) internal pure returns (bytes memory) {
+        assertIndexesWithinBounds(buffer, start, end);
+        return unsafeTakeBytes(buffer, start, end);
+    }
+
+    function takeString(ByteBuffer memory buffer) internal pure returns (string memory) {
+        return string(takeBytes(buffer));
+    }
+
+    function takeUint256(ByteBuffer memory buffer) internal pure returns (uint256) {
+        return vm.parseUint(takeString(buffer));
+    }
+
+    function takeUint8(ByteBuffer memory buffer) internal pure returns (uint8) {
+        return uint8(takeUint256(buffer));
     }
 }

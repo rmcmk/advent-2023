@@ -30,7 +30,7 @@ contract Day01Test is BaseAdventTest {
             return buffer.peekFirst();
         }
 
-        translation = LINGUISTIC_TRANSLATION_TABLE[buffer.toBytes()];
+        translation = LINGUISTIC_TRANSLATION_TABLE[buffer.takeBytes()];
         require(translation.length > 0, "No translation found");
     }
 
@@ -39,7 +39,7 @@ contract Day01Test is BaseAdventTest {
         Slice memory lastDigit = buffer.findLastOf(digits);
 
         return ByteSequence.fromBytes(abi.encodePacked(translate(firstDigit.content), translate(lastDigit.content)))
-            .toUint256();
+            .takeUint256();
     }
 
     function sumCalibrationValues(string memory file, bytes[] memory digits) private returns (uint256 sum) {

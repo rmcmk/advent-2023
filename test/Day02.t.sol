@@ -49,7 +49,7 @@ contract Day02Test is BaseAdventTest {
 
     function parseGameId(ByteBuffer memory line) private pure returns (uint8) {
         uint256 length = line.distanceTo(bytes1(":"));
-        return line.readBytes(length).toUint8();
+        return line.readBytes(length).takeUint8();
     }
 
     function parsePeekGroups(ByteBuffer memory line, Game storage game) private {
@@ -69,8 +69,8 @@ contract Day02Test is BaseAdventTest {
 
     function parsePeek(ByteBuffer memory peek, Game storage game) private {
         ByteBuffer[] memory parts = peek.splitAndTrim(" ");
-        uint8 value = parts[0].toUint8();
-        string memory color = parts[1].toString();
+        uint8 value = parts[0].takeUint8();
+        string memory color = parts[1].takeString();
         game.peeks.push(Peek(color, value));
     }
 

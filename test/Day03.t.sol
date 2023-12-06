@@ -119,7 +119,7 @@ contract Day03Test is BaseAdventTest {
             }
 
             // Parse the amount of positions we stepped and our number
-            numbers.push(Number(x, y, offsetX, digits.toUint256()));
+            numbers.push(Number(x, y, offsetX, digits.takeUint256()));
         }
     }
 
