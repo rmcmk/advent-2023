@@ -6,7 +6,7 @@ import { Strings } from "src/Strings.sol";
 import { Slice, ByteBuffer, ByteSequence, AccessMode, ExpansionMode } from "src/ByteBuffer.sol";
 
 struct Game {
-    uint8 id;
+    uint256 id;
     Peek[] peeks;
 }
 
@@ -24,7 +24,7 @@ contract Day02Test is BaseAdventTest {
     string constant BLUE = "blue";
 
     uint256 totalGames;
-    mapping(uint8 => Game) games;
+    mapping(uint256 => Game) games;
     mapping(string => uint8) private minimums;
 
     constructor() {
@@ -36,24 +36,21 @@ contract Day02Test is BaseAdventTest {
     function parseGames(ByteBuffer[] memory lines) private {
         totalGames = lines.length;
         for (uint256 i = 0; i < lines.length; i++) {
-            ByteBuffer memory line = lines[i];
-            line.skipReader(5); // Skip `Game `
+            ByteBuffer memory buffer = lines[i];
 
-            uint8 id = parseGameId(line);
+            // skips game header information e.g "Game 1: "
+            // we don't need to parse this we can compute the id from the index
+            buffer = buffer.sliceFrom(buffer.safeIndexOf(":") + 2);
+
+            uint256 id = i + 1;
             Game storage game = games[id];
             game.id = id;
 
-            parsePeekGroups(line, game);
+            parsePeekGroups(buffer, game);
         }
     }
 
-    function parseGameId(ByteBuffer memory line) private pure returns (uint8) {
-        uint256 length = line.distanceTo(bytes1(":"));
-        return line.readBytes(length).takeUint8();
-    }
-
     function parsePeekGroups(ByteBuffer memory line, Game storage game) private {
-        line.skipReader(2); // Skip `: `
         ByteBuffer[] memory peekGroups = line.splitAndTrim(";");
         for (uint256 j = 0; j < peekGroups.length; j++) {
             parsePeeks(peekGroups[j], game);
