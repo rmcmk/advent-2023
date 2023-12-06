@@ -10,7 +10,6 @@ import { Slice, ByteBuffer, ByteSequence, AccessMode, ExpansionMode } from "src/
 struct Card {
     uint256 id;
     uint256 matches;
-    uint256 value;
     uint8[] winning;
     uint8[] picks;
 }
@@ -31,9 +30,9 @@ contract Day04Test is BaseAdventTest {
 
             uint256 gameId = i + 1;
             (uint8[] memory winning, uint8[] memory picks) = parseCards(buffer);
-            (uint256 matches, uint256 value) = calculateValue(winning, picks);
+            uint256 matches = calculateMatches(winning, picks);
 
-            cards.push(Card(gameId, matches, value, winning, picks));
+            cards.push(Card(gameId, matches, winning, picks));
         }
     }
 
@@ -51,10 +50,10 @@ contract Day04Test is BaseAdventTest {
         }
     }
 
-    function calculateValue(uint8[] memory winning, uint8[] memory picks)
+    function calculateMatches(uint8[] memory winning, uint8[] memory picks)
         private
         pure
-        returns (uint256 matches, uint256 value)
+        returns (uint256 matches)
     {
         for (uint256 i = 0; i < winning.length; i++) {
             for (uint256 j = 0; j < picks.length; j++) {
@@ -63,14 +62,15 @@ contract Day04Test is BaseAdventTest {
                 }
             }
         }
-        if (matches > 0) {
-            value = 1 << (matches - 1);
-        }
     }
 
     function sumCardValues() private view returns (uint256 sum) {
         for (uint256 i = 0; i < cards.length; i++) {
-            sum += cards[i].value;
+            Card memory card = cards[i];
+            if (card.matches == 0) {
+                continue;
+            }
+            sum += 1 << (card.matches - 1);
         }
     }
 
@@ -97,13 +97,6 @@ contract Day04Test is BaseAdventTest {
 
         assertEq(cards.length, 6);
         assertEq(cards[0].id, 1);
-
-        assertEq(cards[0].value, 8, "Card 1 has four winning numbers (48, 83, 17, and 86), so it is worth 8 points.");
-        assertEq(cards[1].value, 2, "Card 2 has two winning numbers (32 and 61), so it is worth 2 points.");
-        assertEq(cards[2].value, 2, "Card 3 has two winning numbers (1 and 21), so it is worth 2 points.");
-        assertEq(cards[3].value, 1, "Card 4 has one winning number (84), so it is worth 1 point.");
-        assertEq(cards[4].value, 0, "Card 5 has no winning numbers, so it is worth no points.");
-        assertEq(cards[5].value, 0, "Card 6 has no winning numbers, so it is worth no points.");
 
         assertEq(cards[0].matches, 4, "Card 1 has four winning numbers (48, 83, 17, and 86).");
         assertEq(cards[1].matches, 2, "Card 2 has two winning numbers (32 and 61).");
